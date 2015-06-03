@@ -72,8 +72,30 @@ def generic_syntax(cls):
 
 class PluginMeta(type):
     """
-    Add this metaclass to any class derived from an MPx plugin class (
-    MPxPlugin,
+    Add this metaclass to any class derived from an MPx plugin class to
+    automatically register the plugin without the extra boilerplate of
+    separate initialize, uninitialize and creator methods.
+
+    sample usage:
+
+        from plugger import *
+
+        class ExamplePlugin(MPxCommand):
+            __metaclass__ = PluginMeta
+            NAME = 'your_plugin_name'
+            VENDOR = 'vendor_string'
+            VERSION = '1.0'
+
+            def doIt(self, args):
+                print "hello world"
+
+
+    after loading the plugin:
+
+        # registering plugin <class 'ExamplePlugin'>
+        >>> cmds.your_plugin_name()
+        # hello world
+
     """
 
     def __new__(cls, name, bases, dct):
