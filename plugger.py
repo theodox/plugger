@@ -3,7 +3,7 @@ __author__ = 'stevet'
 import sys
 import traceback
 from maya.api.OpenMaya import MFnPlugin, MPxCommand, MSyntax, MDGModifier, \
-    MArgDatabase, MGlobal
+    MArgDatabase, MGlobal, MDagModifier
 
 __version__ = 0.5
 
@@ -110,7 +110,7 @@ class UndoableBase(CommandBase):
 
     def __init__(self):
         super(UndoableBase, self).__init__()
-        self.modifier = None
+        self.modifier = MDagModifier()
 
     def isUndoable(self):
         return True
