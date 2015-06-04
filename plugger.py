@@ -2,13 +2,17 @@ __author__ = 'stevet'
 
 import sys
 import traceback
-from maya.api.OpenMaya import MFnPlugin, MPxCommand, MSyntax, MDGModifier, \
-    MArgDatabase, MGlobal, MDagModifier
+from maya.api.OpenMaya import MFnPlugin, MPxCommand, MSyntax, MDGModifier, MArgDatabase, MGlobal, MDagModifier, \
+    MDistance, MAngle, MTime
 
 __version__ = 0.5
 
 
 class initializePlugin2(object):
+    """
+    Proxies the `initializePlugin` method that Maya expects to be present in every plugin file.  If you have import this
+    into a class with <PluginMeta> derived classes they will automatically be initialized
+    """
     KNOWN = []
 
     def __init__(self, mObj):
@@ -32,6 +36,10 @@ class initializePlugin2(object):
 
 
 class uninitializePlugin2(object):
+    """
+    Proxies the `initializePlugin` method that Maya expects to be present in every plugin file.  If you have import this
+    into a class with <PluginMeta> derived classes they will automatically be initialized
+    """
     KNOWN = []
 
     def __init__(self, mObj):
@@ -240,3 +248,7 @@ class UndoableCommandPlugin(CommandPlugin):
 
         UndoAnon.__name__ = fn.func_code.co_name
         return UndoAnon
+
+
+
+
