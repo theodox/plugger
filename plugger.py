@@ -122,6 +122,9 @@ class PluginMeta(type):
 
 
 class CommandBase(MPxCommand):
+    """
+    Base class for generic MPXCommands
+    """
     __metaclass__ = PluginMeta
     NAME = 'generic_plugin'
 
@@ -136,6 +139,9 @@ class CommandBase(MPxCommand):
 
 
 class UndoableBase(CommandBase):
+    """
+    Base class for Undoable MPXCommands
+    """
     NAME = 'undoable_generic_command'
 
     def __init__(self):
