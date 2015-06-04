@@ -1,5 +1,6 @@
 from maya.api.OpenMaya import MSyntax, MDistance, MAngle, MTime, MArgList, MArgDatabase
 import inspect
+import weakref
 
 class SyntaxItem(object):
     """
@@ -19,18 +20,33 @@ class SyntaxItem(object):
         MTime: MSyntax.kTime
     }
 
+    FN_MAPPING = {
+        None: 'isFlagSet',
+        bool: 'flagArgumentBool',
+        long: 'flagArgumentLong',
+        int: 'flagArgumentInt',
+        float: 'flagArgumentDouble',
+        str: 'flagArgumentString',
+        object: 'flagArgumentString',
+        MDistance: 'flagArgumentMDistance',
+        MAngle: 'flagArgumentMAngle',
+        MTime: 'flagArgumentMTime'
+    }
 
-    def __init__(self, fullname, shortname=None, dataType=None, multi = False):
+
+    def __init__(self, fullname, shortname=None, dataType=None, multi=False):
         flag = lambda p: p if p.startswith("-") else "-" + p
 
         self.long = flag(fullname)
         self.short = flag(shortname) if shortname else self.long[:2]
+        self.multi = multi
         try:
             self.dataType = self.TYPE_MAPPING[dataType]
         except KeyError:
             raise ValueError("Unknown Syntax Parameter Type: %s" % dataType)
+        self._retrieve = self.FN_MAPPING[dataType]
+        self._syntax = None
 
-        self.multi = False
 
     def insert(self, syntax):
         syntax.addFlag(self.short, self.long, self.dataType)
@@ -40,21 +56,25 @@ class SyntaxItem(object):
             syntax.enableQuery = True
         if self.long == '-edit':
             syntax.enableEdit = True
+        self._syntax = weakref.ref(syntax)
 
+
+    def get(self):
+        retriever = getattr(self._syntax, self._retrieve)
+        return retriever(self.long, 0)
 
     def __repr__(self):
-        return "{{ %s, %s: %s}}" %(self.short, self.long, self.dataType)
+        return "{{ %s, %s (%s)}}" % (self.short, self.long, self.dataType)
 
 
 class Flags(object):
-
     """
     A context manager that allows a shorthand method of creating flags.  Entries are added in the form
 
         name = type
 
     where name is python name and type is a type (bool, float, etc or MAngle, MDistance, or MTime). A type of `object`
-    is intepreted as a selectionItem. The complete list of mappings is in the TYPE_MAPPINGS dictionary.
+    is interpreted as a selectionItem. The complete list of mappings is in the TYPE_MAPPINGS dictionary.
 
     Example usage:
 
@@ -98,18 +118,23 @@ class Flags(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for k, v in  inspect.currentframe().f_back.f_locals.items():
+        if exc_type:
+            return False
+
+        for k, v in inspect.currentframe().f_back.f_locals.items():
             if v is self:
                 continue
             flag = k
-            value  = v if isinstance(v, tuple) else (flag[0], v)
+            value = v if isinstance(v, tuple) else (flag[0], v)
             short, typespec = value
             multi = isinstance(typespec, list)
             if multi:
                 typespec = typespec[0]
             self.flags.append(SyntaxItem(flag, short, typespec, multi))
+            setattr(self, flag, self.flags[-1])
         for f in self.flags:
             f.insert(self._syntax)
+        return True
 
     def syntax(self):
         return self._syntax
