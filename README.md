@@ -25,3 +25,16 @@ This would create a basic MPXPluginCommand object and correctly register it as t
         return mod
   
     
+# automatic registration
+
+By default, maya plugins need to expose two static methods `initializePlugin2()` and `uninitializePlugin2()`, which need to be able to convert an incoming `MObject` to an `MFnPlugin` and register or un-register it.  Most of the time there is nothing interesting going on in these methods and they are pure boilerplate.  Plugger uses the `PluginMeta` metaclass to automatically register and unregister plugins for you: you only need to import `initializePlugin2` and `uninitializePlugin2` from plugger and use the metaclass - or you can derive your own plugin from `CommandBase`:
+
+    from plugger import initializePlugin2, uninitializePlugin2, CommandBase
+
+    class AutoRegisteredPlugin(CommandBase):
+    
+        def doIt(args):
+            print "executed"
+            
+        
+    
