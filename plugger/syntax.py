@@ -1,6 +1,10 @@
-from maya.api.OpenMaya import MSyntax, MDistance, MAngle, MTime, MArgList, MArgDatabase
+from maya.api.OpenMaya import MSyntax, MDistance, MAngle, MTime, MArgList, \
+    MArgDatabase
 import inspect
-import weakref
+from maya.cmds import about
+
+_MAYA_VERSION = about(v=True)
+
 
 class SyntaxItem(object):
     """
@@ -33,7 +37,6 @@ class SyntaxItem(object):
         MTime: 'flagArgumentMTime'
     }
 
-
     def __init__(self, fullname, shortname=None, dataType=None, multi=False):
         flag = lambda p: p if p.startswith("-") else "-" + p
 
@@ -44,24 +47,19 @@ class SyntaxItem(object):
             self.dataType = self.TYPE_MAPPING[dataType]
         except KeyError:
             raise ValueError("Unknown Syntax Parameter Type: %s" % dataType)
-        self._retrieve = self.FN_MAPPING[dataType]
-        self._syntax = None
-
 
     def insert(self, syntax):
-        syntax.addFlag(self.short, self.long, self.dataType)
+        short = self.short.lower()
+        long = self.long.lower()
+        syntax.addFlag(short, long, self.dataType)
         if self.multi:
             syntax.makeFlagMultiUse(self.short)
         if self.long == '-query':
             syntax.enableQuery = True
         if self.long == '-edit':
             syntax.enableEdit = True
-        self._syntax = weakref.ref(syntax)
 
 
-    def get(self):
-        retriever = getattr(self._syntax, self._retrieve)
-        return retriever(self.long, 0)
 
     def __repr__(self):
         return "{{ %s, %s (%s)}}" % (self.short, self.long, self.dataType)
@@ -69,12 +67,15 @@ class SyntaxItem(object):
 
 class Flags(object):
     """
-    A context manager that allows a shorthand method of creating flags.  Entries are added in the form
+    A context manager that allows a shorthand method of creating flags.
+    Entries are added in the form
 
         name = type
 
-    where name is python name and type is a type (bool, float, etc or MAngle, MDistance, or MTime). A type of `object`
-    is interpreted as a selectionItem. The complete list of mappings is in the TYPE_MAPPINGS dictionary.
+    where name is python name and type is a type (bool, float, etc or MAngle,
+    MDistance, or MTime). A type of `object`
+    is interpreted as a selectionItem. The complete list of mappings is in
+    the TYPE_MAPPINGS dictionary.
 
     Example usage:
 
@@ -106,7 +107,8 @@ class Flags(object):
         with Flags() as f:
             multiInt = [int]
 
-    If the flags 'edit' or 'query' are provided, the final MSyntax will have its edit or query flags enabled by default.
+    If the flags 'edit' or 'query' are provided, the final MSyntax will have
+    its edit or query flags enabled by default.
 
     """
 
@@ -122,7 +124,7 @@ class Flags(object):
             return False
 
         for k, v in inspect.currentframe().f_back.f_locals.items():
-            if v is self:
+            if k in ('self', 'cls') or v is self:
                 continue
             flag = k
             value = v if isinstance(v, tuple) else (flag[0], v)
@@ -130,12 +132,23 @@ class Flags(object):
             multi = isinstance(typespec, list)
             if multi:
                 typespec = typespec[0]
-            self.flags.append(SyntaxItem(flag, short, typespec, multi))
-            setattr(self, flag, self.flags[-1])
+            self.flags.append(SyntaxItem(flag, short, dataType=typespec,
+                                         multi=multi))
+
+        # HACK ALERT ------------------------------------------------------
+        # there seems to be a bug in 2015 SP5 which
+        # ignores the first flag added.  This fixes that
+        # by adding a dummy flag
+        if self.flags and _MAYA_VERSION in ('2015',):
+            self._syntax.addFlag('-adk', '-adsk_2015_fix', MSyntax.kNoArg)
+
+        # -----------------------------------------------------------------
+        # another symptom of the same problem is garbled flag names
+
         for f in self.flags:
             f.insert(self._syntax)
+
         return True
 
     def syntax(self):
         return self._syntax
-
